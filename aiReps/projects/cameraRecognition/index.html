@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0" />
+    <meta name="format-detection" content="telephone=no" />
+    <meta content="email=no" name="format-detection" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black" />
+    <script src="./tf.min.js"></script>
+    <style>
+      * {
+        padding: 0;
+        margin: 0;
+      }
+      .wrap {
+        margin: 10px;
+      }
+      h1 {
+        font-size: 20px;
+      }
+      img {
+        width: 100%;
+      }
+      .btn {
+        width: 80%;
+        background-color: #51ace3;
+        text-align: center;
+        padding: 5px;
+        border-radius: 5px;
+        color: #ffffff;
+        margin: 5px auto;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <h1>拍照识别物体</h1>
+      <img id="mystery" src="../../imgs/1.png"/>
+      <div class="btn">拍照物体</div>
+    </div>
+    <script type="module">
+      import { INCEPTION_CLASSES } from './labels.js';
+      document.addEventListener('UniAppJSBridgeReady', () => {
+        // 此时可安全使用 window.uni
+        window.uni.postMessage({ data: 'ready' });
+      });
+
+      tf.ready().then(() => {
+        const modelPath = '../../models/inception-v3/model.json'
+        tf.tidy(() => {
+          tf.loadGraphModel(modelPath, { fromTFHub: false }).then((model) => {
+            const mysteryImage = document.getElementById('mystery')
+            const myTensor = tf.browser.fromPixels(mysteryImage)
+            // Inception v3 expects an image resized to 299x299
+            const readyfied = tf.image
+              .resizeBilinear(myTensor, [299, 299], true)
+              .div(255)
+              .reshape([1, 299, 299, 3])
+
+            const result = model.predict(readyfied)
+            // result.print() // useless
+
+            const { values, indices } = tf.topk(result, 3)
+            // indices.print()
+
+            // Let's hear those winners
+            const winners = indices.dataSync()
+            // console.log(winners)
+            console.log(`
+              🥇 ${INCEPTION_CLASSES[winners[0]]},
+              🥈 ${INCEPTION_CLASSES[winners[1]]},
+              🥉 ${INCEPTION_CLASSES[winners[2]]}
+            `)
+          })
+        })
+      })
+    </script>
+  </body>
+</html>
